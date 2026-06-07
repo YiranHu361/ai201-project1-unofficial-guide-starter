@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from embed import get_model, get_collection
 
-TOP_K = 4
+TOP_K = 6
 
 
 def retrieve(query: str, k: int = TOP_K) -> list[dict]:

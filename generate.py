@@ -1,11 +1,17 @@
 """Milestone 5 — grounded generation.
 
 Takes a user question, retrieves the most relevant chunks, and asks Groq's
-llama-3.3-70b-versatile to answer using only those chunks. Grounding is enforced
-in two ways: a relevance gate drops chunks that are too far from the question (so
-an out-of-scope question ends up with no context and gets a refusal without even
-calling the model), and a system prompt that instructs the model to answer only
-from the provided context and to say it doesn't have enough information otherwise.
+llama-3.3-70b-versatile to answer using only those chunks.
+
+Grounding is enforced primarily through the system prompt: the model is told to
+answer only from the provided documents and to reply with a fixed refusal line
+when they don't contain the answer. We rely on the prompt rather than a hard
+distance threshold because testing showed the distances overlap — a legitimate
+but hard in-scope question (why Clark Kerr is far, top distance ~0.53) and an
+out-of-scope question (best gym, ~0.52) land at essentially the same distance, so
+no threshold can separate them. The model, reading the actual chunk text, can.
+We keep only a loose distance backstop to trim clearly-unrelated chunks from the
+context so they don't dilute it.
 
 Source attribution is added programmatically from the metadata of the chunks that
 were actually used, not left to the model to invent.
@@ -26,10 +32,12 @@ load_dotenv()
 
 LLM_MODEL = "llama-3.3-70b-versatile"
 
-# Chunks farther than this cosine distance are treated as not relevant. In
-# testing, in-scope questions retrieve top chunks around 0.27-0.40 while
-# off-topic questions sit at 0.52+, so this cleanly separates them.
-RELEVANCE_THRESHOLD = 0.48
+# Loose backstop only: drop chunks beyond this cosine distance so obviously
+# unrelated text doesn't dilute the context. This is NOT the refusal mechanism
+# (the prompt is) — it is set generously so legitimate hard questions keep their
+# evidence. Out-of-scope questions still get a few chunks past this gate, and the
+# prompt refuses them.
+RELEVANCE_THRESHOLD = 0.70
 
 REFUSAL = "I don't have enough information on that based on the documents I have."
 

@@ -70,10 +70,12 @@ answerable thought.
 
 I am using the all-MiniLM-L6-v2 model from sentence-transformers for embeddings. It runs locally with
 no API key, produces 384-dimensional vectors, and has a 384-token context window, which is plenty for
-my short paragraph chunks. I will retrieve the top four chunks per query. Several of my questions,
-like which dining hall is best, are answered better when a few independent reviews agree, so I want
-more than one chunk, but not so many that the Telegraph restaurant lists flood the context. I will
-start at four and tune it after I see real distance scores in Milestone 4.
+my short paragraph chunks. I planned to retrieve the top four chunks per query and tune that after
+seeing real results, and tuning is exactly what happened. At four chunks several legitimate questions
+failed, because the chunk that actually answers them ranked fifth or sixth. For the best dining hall
+question, the explicit "highest-quality food" reviews of Clark Kerr sat at ranks six and eight, just
+outside the top four, so the system had no evidence to answer from. Raising the retrieval to six
+chunks fixed this without flooding the context, so the final setting is top six.
 
 If I were deploying this for real users and cost were not a constraint, I would weigh a few tradeoffs
 in picking a different model. A larger embedding model, like bge-large or one of the OpenAI embedding
@@ -137,9 +139,10 @@ header, using plain Python file reading. Chunking runs my custom paragraph-aware
 tiny fragments and caps oversized paragraphs. Embedding uses all-MiniLM-L6-v2 from
 sentence-transformers to turn each chunk into a vector, which then goes into a ChromaDB vector store
 along with metadata for the source filename and the chunk position. Retrieval takes a user query,
-embeds it the same way, and asks ChromaDB for the top four most similar chunks with their metadata.
-Generation passes those chunks to the Groq llama-3.3-70b-versatile model with a grounding prompt, and
-the source filenames get attached to the response. On top of all that, a simple Gradio interface (or a
+embeds it the same way, and asks ChromaDB for the top six most similar chunks with their metadata.
+Generation passes those chunks to the Groq llama-3.3-70b-versatile model with a grounding prompt that
+tells it to answer only from those chunks and to refuse otherwise, and the source filenames get
+attached to the response programmatically. On top of all that, a simple Gradio interface (or a
 command line tool) takes a question and shows the answer together with the sources it came from.
 
 ## AI Tool Plan
